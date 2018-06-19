@@ -164,7 +164,7 @@ class RpcServer(object):
 
             try:
                 method = getattr(instance, params["method"])
-            except KeyError:
+            except (KeyError, AttributeError):
                 raise NoMethodError(params["method"])
 
             has_signal_attr = hasattr(method, METHOD_RPC_AS_SIGNAL_ATTR)
@@ -178,6 +178,11 @@ class RpcServer(object):
             # signals have no return value
             if params["command"] == "call":
                 self.send_return(ident, params["req_id"], ret)
+        except NoMethodError as exc:
+            if self.transfer_exceptions:
+                self.send_exception(ident, params["req_id"], exc)
+            else:
+                raise
         except Exception as exc:
             if self.transfer_exceptions and not has_signal_attr:
                 self.send_exception(ident, params["req_id"], exc)
